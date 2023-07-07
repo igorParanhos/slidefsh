@@ -34,8 +34,6 @@ export const addMouseDragListener = (
   };
 };
 
-// export const setObserver = 
-
 export interface CarouselConfig {
   onDrag?: () => void;
   onDragEnd?: () => void;
@@ -47,20 +45,53 @@ export class Carousel {
   state = CarouselState();
   config: CarouselConfig;
 
-  $element: HTMLElement;
+  $element: HTMLElement = null!;
   $slides: HTMLElement[] = [];
   _observer: IntersectionObserver | undefined;
+  _dragging = false;
+  _cancelListeners: () => void = () => null;
+  _interval: number | undefined;
 
-  constructor($element: HTMLElement, config: CarouselConfig = { $slides: [] }) {
+  constructor(config: CarouselConfig = { $slides: [] }, $element?: HTMLElement | undefined) {
     this.config = config;
-    this.$element = $element;
     this.$slides = config.$slides;
-
-
+    if ($element)
+      this.$element = $element;
   }
-  init = () => {
+  init = ($element?: HTMLElement) => {
+    this.$element = $element || this.$element;
     this.$element.addEventListener("scroll", this.resizeOnScroll);
     this.setObserver();
+    this.state.addListener("currentSlide", this.update);
+
+    const drag = (e: any) => {
+      requestAnimationFrame(() => {
+        this.$element.scrollLeft =
+          this.$element.scrollLeft - e.movementX;
+      });
+    };
+    const out = () => {
+      this._dragging = false;
+      this.update();
+    };
+    const dragStart = () => {
+      this._dragging = true;
+      if (this._interval)
+        clearInterval(this._interval);
+    }
+
+    this._cancelListeners = addMouseDragListener(this.$element, {
+      drag,
+      out,
+      down: dragStart,
+    });
+  }
+  destroy = () => {
+    this.clearScroll();
+    this._cancelListeners();
+    this._observer?.disconnect();
+    this.state.removeListener("currentSlide", this.update);
+    this.$element.removeEventListener("scroll", this.resizeOnScroll);
   }
 
   get currentSlide() {
@@ -82,6 +113,32 @@ export class Carousel {
       $slide.classList.toggle("prev", i === this.currentSlide - 1);
       $slide.classList.toggle("next", i === this.currentSlide + 1);
     });
+    !this._dragging && this.goToItem(this.currentSlide, this.$element);
+  }
+  clearScroll = () => {
+    clearInterval(this._interval);
+  }
+  // TODO: move function outside of class
+  goToItem = (index: number, $element: HTMLElement) => {
+    clearInterval(this._interval);
+    const width = $element.clientWidth;
+    const scrollLeft = $element.scrollLeft;
+    const scrollTarget = width * index;
+    const scrollDiff = scrollTarget - scrollLeft;
+    const scrollDirection = Math.sign(scrollDiff);
+    const scrollDistance = Math.abs(scrollDiff);
+    const scrollTime = 300;
+    const scrollStep = (scrollDistance / scrollTime) * 10;
+    this._interval = setInterval(() => {
+      $element.scrollLeft += scrollStep * scrollDirection;
+      if (
+        (scrollDirection > 0 && $element.scrollLeft >= scrollTarget) ||
+        (scrollDirection < 0 && $element.scrollLeft <= scrollTarget)
+      ) {
+        $element.scrollLeft = scrollTarget;
+        clearInterval(this._interval);
+      }
+    }, 10);
   }
 
   setObserver = () => {
