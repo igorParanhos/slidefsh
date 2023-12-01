@@ -5,11 +5,9 @@ import React, {
   ReactElement,
   cloneElement,
   forwardRef,
-  useEffect,
   useRef,
 } from "react";
-import { Carousel as CarouselInst } from "../../core/Carousel";
-import { useCarousel } from "../../core/useCarousel";
+import { useCarousel, useCarousel2 } from "../../core/useCarousel";
 
 export interface CarouselProps {
   children: React.ReactNode;
@@ -18,7 +16,7 @@ export interface CarouselProps {
 export const Carousel: React.FC<CarouselProps> = ({ children }) => {
   const itemsRef = useRef<HTMLElement[]>([]);
 
-  const { ref, instance } = useCarousel({
+  const { ref, instance } = useCarousel2({
     $slides: itemsRef.current,
   });
 

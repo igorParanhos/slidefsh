@@ -1,38 +1,31 @@
 import { CarouselState } from "./State";
+import { addMouseDragListener, clamp } from "./utils";
 
-const clamp = (min: number, v: number, max: number) => {
-  return Math.min(Math.max(v, min), max);
-};
+export interface MoverSettings {
+  $element: HTMLElement;
+  $slides: HTMLElement[];
+  onDrag?: () => void;
+  onDragEnd?: () => void;
+  onDragStart?: () => void;
+}
 
-export const addMouseDragListener = (
-  $element: HTMLElement,
-  {
-    down,
-    out,
-    drag,
-  }: { down?: EventListener; out?: EventListener; drag?: EventListener }
-) => {
-  const mouseDown: EventListener = (e) => {
-    down?.(e);
-    $element.addEventListener("mousemove", drag!);
+// Virtual Scroller
+export class Mover {
+  settings: MoverSettings;
+  _scrollWidth: number = null!;
+  _scrollHeight: number = null!;
+  _clipPoints: number[] = [];
+
+  constructor(settings: MoverSettings) {
+    this.settings = settings;
+    this.calculateScroll();
+  }
+  calculateScroll = () => {
+    this._scrollWidth = this.settings.$element.scrollWidth;
+    this._scrollHeight = this.settings.$element.scrollHeight;
+    this._clipPoints = this.settings.$slides.map((slide) => slide.offsetLeft);
   };
-  const mouseUp: EventListener = (e) => {
-    out?.(e);
-    $element.removeEventListener("mousemove", drag!);
-  };
-  const mouseOut: EventListener = (e) => {
-    out?.(e);
-    $element.removeEventListener("mousemove", drag!);
-  };
-  $element.addEventListener("mouseup", mouseUp);
-  $element.addEventListener("mousedown", mouseDown);
-  $element.addEventListener("mouseleave", mouseOut);
-  return () => {
-    $element.removeEventListener("mouseup", mouseUp);
-    $element.removeEventListener("mousedown", mouseDown);
-    $element.removeEventListener("mouseleave", mouseOut);
-  };
-};
+}
 
 export interface CarouselConfig {
   onDrag?: () => void;
@@ -49,25 +42,26 @@ export class Carousel {
   $slides: HTMLElement[] = [];
   _observer: IntersectionObserver | undefined;
   _dragging = false;
-  _cancelListeners: () => void = () => null;
   _interval: number | undefined;
+  _cancelListeners: () => void = () => null;
 
-  constructor(config: CarouselConfig = { $slides: [] }, $element?: HTMLElement | undefined) {
+  constructor(
+    config: CarouselConfig = { $slides: [] },
+    $element?: HTMLElement | undefined
+  ) {
     this.config = config;
     this.$slides = config.$slides;
-    if ($element)
-      this.$element = $element;
+    if ($element) this.$element = $element;
   }
   init = ($element?: HTMLElement) => {
     this.$element = $element || this.$element;
     this.$element.addEventListener("scroll", this.resizeOnScroll);
-    this.setObserver();
     this.state.addListener("currentSlide", this.update);
+    this.setObserver();
 
     const drag = (e: any) => {
       requestAnimationFrame(() => {
-        this.$element.scrollLeft =
-          this.$element.scrollLeft - e.movementX;
+        this.$element.scrollLeft = this.$element.scrollLeft - e.movementX;
       });
     };
     const out = () => {
@@ -76,36 +70,36 @@ export class Carousel {
     };
     const dragStart = () => {
       this._dragging = true;
-      if (this._interval)
-        clearInterval(this._interval);
-    }
+      if (this._interval) clearInterval(this._interval);
+    };
 
     this._cancelListeners = addMouseDragListener(this.$element, {
       drag,
       out,
       down: dragStart,
     });
-  }
+  };
   destroy = () => {
     this.clearScroll();
     this._cancelListeners();
     this._observer?.disconnect();
     this.state.removeListener("currentSlide", this.update);
     this.$element.removeEventListener("scroll", this.resizeOnScroll);
-  }
+  };
 
   get currentSlide() {
     return this.state.state.currentSlide;
   }
-  set currentSlide(v: number) {
-    this.state.state.currentSlide = clamp(0, v, this.$slides.length - 1);
+  set currentSlide(value: number) {
+    if (value < 0 || value > this.$slides.length - 1) return;
+    this.state.state.currentSlide = value;
   }
   next = () => {
     this.currentSlide++;
-  }
+  };
   prev = () => {
     this.currentSlide--;
-  }
+  };
 
   update = () => {
     this.$slides.forEach(($slide, i) => {
@@ -114,10 +108,10 @@ export class Carousel {
       $slide.classList.toggle("next", i === this.currentSlide + 1);
     });
     !this._dragging && this.goToItem(this.currentSlide, this.$element);
-  }
+  };
   clearScroll = () => {
     clearInterval(this._interval);
-  }
+  };
   // TODO: move function outside of class
   goToItem = (index: number, $element: HTMLElement) => {
     clearInterval(this._interval);
@@ -138,8 +132,8 @@ export class Carousel {
         $element.scrollLeft = scrollTarget;
         clearInterval(this._interval);
       }
-    }, 10);
-  }
+    }, 10) as unknown as number;
+  };
 
   setObserver = () => {
     const callback = (entries: IntersectionObserverEntry[]) => {
@@ -160,7 +154,7 @@ export class Carousel {
     this.$slides.forEach((item) => {
       this._observer?.observe(item);
     });
-  }
+  };
   resizeOnScroll = () => {
     this.$slides.forEach((e, index) => {
       requestAnimationFrame(() => {
@@ -172,5 +166,5 @@ export class Carousel {
         e.style.setProperty("--size", `${Math.max(size, 0.15)}`);
       });
     });
-  }
+  };
 }
