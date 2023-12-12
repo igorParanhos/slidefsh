@@ -33,6 +33,8 @@ export const useCarousel = (config: CarouselConfig) => {
     }
   }, []);
 
+  console.count("rendering");
+
   useEffect(() => {
     () => {
       carouselRef.destroy();

@@ -5,7 +5,9 @@ import React, {
   ReactElement,
   cloneElement,
   forwardRef,
+  useEffect,
   useRef,
+  useState,
 } from "react";
 import { useCarousel, useCarousel2 } from "../../core/useCarousel";
 
@@ -16,7 +18,7 @@ export interface CarouselProps {
 export const Carousel: React.FC<CarouselProps> = ({ children }) => {
   const itemsRef = useRef<HTMLElement[]>([]);
 
-  const { ref, instance } = useCarousel2({
+  const { ref, instance } = useCarousel({
     $slides: itemsRef.current,
   });
 
@@ -59,11 +61,31 @@ export const CarouselItem = forwardRef<HTMLDivElement, CarouselItemProps>(
   }
 );
 
+const fetchImages = (amount = 3) => {
+  return Promise.all(
+    [...Array(amount)].map(() =>
+      fetch("https://dog.ceo/api/breeds/image/random")
+    )
+  )
+    .then((responses) => Promise.all(responses.map((res) => res.json())))
+    .then((results) =>
+      Promise.all(results.map(({ message }) => new Promise((r) => r(message))))
+    );
+};
+
 export const FullCarousel = () => {
+  const [images, setImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchImages().then(setImages);
+  }, []);
+
+  console.log(images);
+
   return (
     <Carousel>
-      <CarouselItem>
-        <p className={styles.text}></p>
+      {/* <CarouselItem>
+        <p className={styles.text}>asdf</p>
       </CarouselItem>
       <CarouselItem>
         <p className={styles.text}></p>
@@ -73,11 +95,18 @@ export const FullCarousel = () => {
       </CarouselItem>
       <CarouselItem>
         <p className={styles.text}></p>
-      </CarouselItem>
+      </CarouselItem> */}
+      {images.map((url) => (
+        <CarouselItem>
+          <div className={styles.img}>
+            <img src={url} />
+          </div>
+        </CarouselItem>
+      ))}
     </Carousel>
   );
 };
-
+// todo: allow generators on the carousel
 export const FullCarousel2 = () => {
   return (
     <Carousel>
