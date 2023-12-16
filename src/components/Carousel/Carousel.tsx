@@ -5,11 +5,10 @@ import React, {
   ReactElement,
   cloneElement,
   forwardRef,
-  useEffect,
   useRef,
-  useState,
 } from "react";
-import { useCarousel, useCarousel2 } from "../../core/useCarousel";
+import { useCarousel } from "../../core/useCarousel";
+import { useDogImages } from "../../hooks/useDogImages";
 
 export interface CarouselProps {
   children: React.ReactNode;
@@ -47,63 +46,71 @@ export const Carousel: React.FC<CarouselProps> = ({ children }) => {
   );
 };
 
-export interface CarouselItemProps {
+export type CarouselItemProps = JSX.IntrinsicAttributes & {
   children: React.ReactNode;
+  className?: string;
 }
 
 export const CarouselItem = forwardRef<HTMLDivElement, CarouselItemProps>(
-  ({ children }, ref) => {
+  ({ children, className, ...args }, ref) => {
     return (
-      <div ref={ref} className={styles.carouselItem}>
+      <div ref={ref} className={`${styles.carouselItem} ${className}`} {...args} >
         {children}
       </div>
     );
   }
 );
 
-const fetchImages = (amount = 3) => {
-  return Promise.all(
-    [...Array(amount)].map(() =>
-      fetch("https://dog.ceo/api/breeds/image/random")
-    )
-  )
-    .then((responses) => Promise.all(responses.map((res) => res.json())))
-    .then((results) =>
-      Promise.all(results.map(({ message }) => new Promise((r) => r(message))))
-    );
-};
+// const fetchImages = (amount = 3, { signal }: {signal?: AbortSignal} = {}): Promise<string[]> => {
+//   return Promise.all(
+//     [...Array(amount)].map(() =>
+//       fetch("https://dog.ceo/api/breeds/image/random", {
+//         signal
+//       })
+//     )
+//   )
+//     .then((responses) => Promise.all(responses.map((res) => res.json())), (err) => {
+//       console.log('Failed to fetch');
+//     })
+//     .then((results) =>
+//       Promise.all(results.map(({ message }) => new Promise((r) => r(message)))), () => {console.log('Failed to map responses')}
+//     );
+// };
 
 export const FullCarousel = () => {
-  const [images, setImages] = useState<string[]>([]);
+  const {images, status} = useDogImages();
 
-  useEffect(() => {
-    fetchImages().then(setImages);
-  }, []);
+  // const [images, setImages] = useState<string[]>([]);
 
-  console.log(images);
+  // useEffect(() => {
+  //   if (images.length) return;
+
+  //   console.count('fetching images')
+
+  //   const abortController = new AbortController();
+  //   fetchImages(3, {signal: abortController.signal}).then(setImages);
+
+  //   return () => {
+  //     abortController.abort();
+  //     console.count('aborting fetch request')
+  //   } 
+  // }, []);
+
+  // console.log(images);
+  console.log(status)
 
   return (
+    <>
+    <p>Status: {status}</p>
     <Carousel>
-      {/* <CarouselItem>
-        <p className={styles.text}>asdf</p>
-      </CarouselItem>
-      <CarouselItem>
-        <p className={styles.text}></p>
-      </CarouselItem>
-      <CarouselItem>
-        <p className={styles.text}></p>
-      </CarouselItem>
-      <CarouselItem>
-        <p className={styles.text}></p>
-      </CarouselItem> */}
       {images.map((url) => (
-        <CarouselItem>
+        <CarouselItem key={url}>
           <div className={styles.img}>
             <img src={url} />
           </div>
         </CarouselItem>
       ))}
-    </Carousel>
+    </Carousel></>
   );
 };
 // todo: allow generators on the carousel

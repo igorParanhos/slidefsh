@@ -1,6 +1,3 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
 import "./App.css";
 import { FullCarousel, FullCarousel2 } from "./components/Carousel/Carousel";
 import { Tab, TabItem } from "./components/Tab/Tab";
@@ -12,9 +9,9 @@ function App() {
         <TabItem>
           <FullCarousel />
         </TabItem>
-        <TabItem>
+        {/* <TabItem>
           <FullCarousel />
-        </TabItem>
+        </TabItem> */}
         <TabItem>
           <FullCarousel2 />
         </TabItem>
